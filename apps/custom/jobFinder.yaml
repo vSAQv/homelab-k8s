@@ -20,7 +20,7 @@ spec:
         fsGroup: 100
       containers:
         - name: job-finder
-          image: ghcr.io/vsaqv/job-search:latest
+          image: ghcr.io/vSAQv/jobFinder:latest
           env:
             - name: OPENROUTER_API_KEY
               valueFrom:
@@ -57,18 +57,18 @@ spec:
             sizeLimit: 1Gi
         - name: config
           hostPath:
-            path: /home/cif/homelab/config/job-finder/config.yaml
+            path: /home/cif/homelab/config/jobFinder/config.yaml
             type: FileOrCreate
         - name: db
           hostPath:
-            path: /home/cif/homelab/config/job-finder/applied.db
+            path: /home/cif/homelab/config/jobFinder/applied.db
             type: FileOrCreate
         - name: state
           hostPath:
             # Must be generated manually via auth_setup.py before deployment
-            path: /home/cif/homelab/config/job-finder/state.json
+            path: /home/cif/homelab/config/jobFinder/state.json
             type: File
         - name: resumes
           hostPath:
-            path: /home/cif/homelab/config/job-finder/resumes
+            path: /home/cif/homelab/config/jobFinder/resumes
             type: DirectoryOrCreate
