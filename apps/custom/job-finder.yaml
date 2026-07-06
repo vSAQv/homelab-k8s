@@ -1,0 +1,74 @@
+# apps/custom/job-finder.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: job-finder
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: job-finder
+  template:
+    metadata:
+      labels:
+        app: job-finder
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: job-finder
+          image: ghcr.io/vsaqv/job-search:latest
+          env:
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: OPENROUTER_API_KEY
+            - name: TELEGRAM_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TELEGRAM_BOT_TOKEN
+            - name: TELEGRAM_CHAT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TELEGRAM_CHAT_ID
+          volumeMounts:
+            # Mount shared memory to prevent Chromium crashes (replaces ipc: host)
+            - name: dshm
+              mountPath: /dev/shm
+            - name: config
+              mountPath: /app/config.yaml
+            - name: db
+              mountPath: /app/applied.db
+            - name: state
+              mountPath: /app/state.json
+              readOnly: true
+            - name: resumes
+              mountPath: /app/resumes
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/job-finder/config.yaml
+            type: FileOrCreate
+        - name: db
+          hostPath:
+            path: /home/cif/homelab/config/job-finder/applied.db
+            type: FileOrCreate
+        - name: state
+          hostPath:
+            # Must be generated manually via auth_setup.py before deployment
+            path: /home/cif/homelab/config/job-finder/state.json
+            type: File
+        - name: resumes
+          hostPath:
+            path: /home/cif/homelab/config/job-finder/resumes
+            type: DirectoryOrCreate

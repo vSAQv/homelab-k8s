@@ -1,0 +1,68 @@
+# apps/books/bookshelf-ebooks.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookshelf-ebooks
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookshelf-ebooks
+  template:
+    metadata:
+      labels:
+        app: bookshelf-ebooks
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: bookshelf-ebooks
+          image: ghcr.io/pennydreadful/bookshelf:hardcover
+          ports:
+            - containerPort: 8787
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/bookshelf-ebooks
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: /home/cif/homelab/data
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookshelf-ebooks
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8787
+      targetPort: 8787
+  selector:
+    app: bookshelf-ebooks

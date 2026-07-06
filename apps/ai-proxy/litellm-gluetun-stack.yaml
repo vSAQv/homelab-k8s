@@ -1,0 +1,80 @@
+# apps/ai-proxy/litellm-gluetun-stack.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-proxy-stack
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-proxy
+  template:
+    metadata:
+      labels:
+        app: ai-proxy
+    spec:
+      containers:
+        - name: gluetun
+          image: qmcgaw/gluetun:latest
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: "protonvpn"
+            - name: VPN_TYPE
+              value: "wireguard"
+            - name: SERVER_COUNTRIES
+              value: "Netherlands"
+            - name: FREE_ONLY
+              value: "on"
+            - name: WIREGUARD_MTU
+              value: "1280"
+            - name: HTTPPROXY
+              value: "on"
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PROTON_KEY
+          volumeMounts:
+            - name: tun
+              mountPath: /dev/net/tun
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-latest
+          command: ["--config", "/app/config.yaml"]
+          ports:
+            - containerPort: 4000
+          env:
+            - name: HTTP_PROXY
+              value: "http://localhost:8888"
+            - name: HTTPS_PROXY
+              value: "http://localhost:8888"
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: GEMINI_KEY
+          volumeMounts:
+            - name: config
+              mountPath: /app/config.yaml
+      volumes:
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/litellm/config.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 4000
+      targetPort: 4000
+  selector:
+    app: ai-proxy

@@ -1,0 +1,90 @@
+# apps/media/navidrome.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: navidrome
+  template:
+    metadata:
+      labels:
+        app: navidrome
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: navidrome
+          image: deluan/navidrome:latest
+          ports:
+            - containerPort: 4533
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: ND_SCANSCHEDULE
+              value: "1h"
+            - name: ND_LOGLEVEL
+              value: "info"
+            - name: ND_SESSIONTIMEOUT
+              value: "720h"
+            - name: SPOTIFY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SPOTIFY_ID
+            - name: SPOTIFY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SPOTIFY_SECRET
+            - name: LASTFM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: LASTFM_KEY
+            - name: LASTFM_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: LASTFM_SECRET
+          volumeMounts:
+            - name: config
+              mountPath: /data
+            - name: music
+              mountPath: /music
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/navidrome
+            type: DirectoryOrCreate
+        - name: music
+          hostPath:
+            path: /home/cif/homelab/data/music
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: navidrome
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 4533
+      targetPort: 4533
+  selector:
+    app: navidrome

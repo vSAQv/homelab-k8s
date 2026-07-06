@@ -1,0 +1,58 @@
+# apps/media/seerr.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seerr
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: seerr
+  template:
+    metadata:
+      labels:
+        app: seerr
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: seerr
+          image: ghcr.io/seerr-team/seerr:latest
+          ports:
+            - containerPort: 5055
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /app/config
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/jellyseerr
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seerr
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5055
+      targetPort: 5055
+  selector:
+    app: seerr

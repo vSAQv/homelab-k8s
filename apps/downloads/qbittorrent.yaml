@@ -1,0 +1,81 @@
+# apps/downloads/qbittorrent.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:latest
+          ports:
+            - containerPort: 8090
+            - containerPort: 6881
+            - containerPort: 6881
+              protocol: UDP
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "200m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: WEBUI_PORT
+              value: "8090"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/qbittorrent
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: /home/cif/homelab/data
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: webui
+    - port: 6881
+      targetPort: 6881
+      name: tcp-peer
+    - port: 6881
+      targetPort: 6881
+      protocol: UDP
+      name: udp-peer
+  selector:
+    app: qbittorrent

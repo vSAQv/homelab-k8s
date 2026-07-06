@@ -1,0 +1,71 @@
+# apps/books/suwayomi.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: suwayomi
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: suwayomi
+  template:
+    metadata:
+      labels:
+        app: suwayomi
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: suwayomi
+          image: ghcr.io/suwayomi/tachidesk:latest
+          ports:
+            - containerPort: 4567
+          resources:
+            requests:
+              # Java/Kotlin backend, requires more base memory
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "2Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: SOCKS_PROXY_ENABLED
+              value: "false"
+          volumeMounts:
+            - name: config
+              mountPath: /home/suwayomi/.local/share/Tachidesk
+            - name: downloads
+              mountPath: /home/suwayomi/.local/share/Tachidesk/downloads
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/suwayomi
+            type: DirectoryOrCreate
+        - name: downloads
+          hostPath:
+            path: /home/cif/homelab/data/media/manga
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: suwayomi
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 4567
+      targetPort: 4567
+  selector:
+    app: suwayomi

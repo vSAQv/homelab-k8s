@@ -1,0 +1,89 @@
+# apps/gamevault/backend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gamevault-backend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gamevault-backend
+  template:
+    metadata:
+      labels:
+        app: gamevault-backend
+    spec:
+      nodeSelector:
+        hardware.games-partition: "true"
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: gamevault-backend
+          image: phalcode/gamevault-backend:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: DB_HOST
+              value: "gamevault-db"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              value: "gamevault"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: GV_DB_PASS
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: JWT_SECRET_KEY
+            - name: RAWG_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: RAWG_KEY
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: games
+              mountPath: /games
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/gamevault
+            type: DirectoryOrCreate
+        - name: games
+          hostPath:
+            path: /mnt/win_share/games
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gamevault-backend
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8082
+      targetPort: 8080
+  selector:
+    app: gamevault-backend

@@ -1,0 +1,68 @@
+# apps/arr/radarr.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: radarr
+          image: lscr.io/linuxserver/radarr:latest
+          ports:
+            - containerPort: 7878
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/radarr
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: /home/cif/homelab/data
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 7878
+      targetPort: 7878
+  selector:
+    app: radarr

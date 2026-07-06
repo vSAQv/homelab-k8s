@@ -1,0 +1,80 @@
+# apps/books/audiobookshelf.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audiobookshelf
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audiobookshelf
+  template:
+    metadata:
+      labels:
+        app: audiobookshelf
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: audiobookshelf
+          image: ghcr.io/advplyr/audiobookshelf:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: metadata
+              mountPath: /metadata
+            - name: audiobooks
+              mountPath: /audiobooks
+            - name: ebooks
+              mountPath: /ebooks
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/audiobookshelf
+            type: DirectoryOrCreate
+        - name: metadata
+          hostPath:
+            path: /home/cif/homelab/config/audiobookshelf/metadata
+            type: DirectoryOrCreate
+        - name: audiobooks
+          hostPath:
+            path: /home/cif/homelab/data/media/audiobooks
+            type: Directory
+        - name: ebooks
+          hostPath:
+            path: /home/cif/homelab/data/media/books
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audiobookshelf
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 13378
+      targetPort: 80
+  selector:
+    app: audiobookshelf

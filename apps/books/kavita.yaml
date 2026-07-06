@@ -1,0 +1,74 @@
+# apps/books/kavita.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kavita
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kavita
+  template:
+    metadata:
+      labels:
+        app: kavita
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: kavita
+          image: lscr.io/linuxserver/kavita:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: manga
+              mountPath: /manga
+            - name: books
+              mountPath: /books
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/kavita
+            type: DirectoryOrCreate
+        - name: manga
+          hostPath:
+            path: /home/cif/homelab/data/media/manga
+            type: Directory
+        - name: books
+          hostPath:
+            path: /home/cif/homelab/data/media/books
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kavita
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5000
+      targetPort: 5000
+  selector:
+    app: kavita

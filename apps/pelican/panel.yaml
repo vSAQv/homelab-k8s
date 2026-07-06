@@ -1,0 +1,89 @@
+# apps/pelican/panel.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pelican-panel
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pelican-panel
+  template:
+    metadata:
+      labels:
+        app: pelican-panel
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: pelican-panel
+          image: ghcr.io/pelican-dev/panel:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: APP_TIMEZONE
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: DB_CONNECTION
+              value: "mariadb"
+            - name: DB_HOST
+              value: "pelican-db"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_DATABASE
+              value: "pelican"
+            - name: DB_USERNAME
+              value: "pelican"
+            - name: APP_URL
+              value: "http://localhost:8084"
+            - name: APP_ENV
+              value: "production"
+            - name: REDIS_HOST
+              value: "immich-redis"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PL_DB_PASS
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PL_APP_KEY
+          volumeMounts:
+            - name: storage
+              mountPath: /app/storage
+      volumes:
+        - name: storage
+          hostPath:
+            path: /home/cif/homelab/config/pelican
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pelican-panel
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8084
+      targetPort: 80
+  selector:
+    app: pelican-panel

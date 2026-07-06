@@ -1,0 +1,104 @@
+# apps/downloads/slskd.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slskd
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: slskd
+  template:
+    metadata:
+      labels:
+        app: slskd
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: slskd
+          image: slskd/slskd:latest
+          ports:
+            - containerPort: 5030
+            - containerPort: 50300
+            - containerPort: 50300
+              protocol: UDP
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: SLSKD_UID
+              value: "1000"
+            - name: SLSKD_GID
+              value: "100"
+            - name: UMASK
+              value: "002"
+            - name: SLSKD_HTTP_PORT
+              value: "5030"
+            - name: SLSKD_REMOTE_CONFIGURATION
+              value: "true"
+            - name: SLSKD_DOWNLOADS_DIR
+              value: "/music"
+            - name: SLSKD_SHARED_DIR
+              value: "/music"
+            - name: SLSKD_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SL_USERNAME
+            - name: SLSKD_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SL_PASSWORD
+            - name: SLSKD_SL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SL_SL_USERNAME
+            - name: SLSKD_SL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: SL_SL_PASSWORD
+          volumeMounts:
+            - name: config
+              mountPath: /app
+            - name: music
+              mountPath: /music
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/slskd
+            type: DirectoryOrCreate
+        - name: music
+          hostPath:
+            path: /home/cif/homelab/data/music
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: slskd
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5030
+      targetPort: 5030
+      name: http
+    - port: 50300
+      targetPort: 50300
+      name: tcp-transfer
+    - port: 50300
+      targetPort: 50300
+      protocol: UDP
+      name: udp-transfer
+  selector:
+    app: slskd

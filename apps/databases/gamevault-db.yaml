@@ -1,0 +1,53 @@
+# apps/databases/gamevault-db.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gamevault-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gamevault-db
+  template:
+    metadata:
+      labels:
+        app: gamevault-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_DB
+              value: "gamevault"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: GV_DB_PASS
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-data
+          hostPath:
+            path: /home/cif/homelab/config/gamevault-db
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gamevault-db
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+  selector:
+    app: gamevault-db

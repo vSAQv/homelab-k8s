@@ -1,0 +1,86 @@
+# apps/pelican/wings.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pelican-wings
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pelican-wings
+  template:
+    metadata:
+      labels:
+        app: pelican-wings
+    spec:
+      # Pin Wings to the node that actually holds the game server storage
+      nodeSelector:
+        hardware.games-partition: "true"
+      containers:
+        - name: pelican-wings
+          image: ghcr.io/pelican-dev/wings:latest
+          ports:
+            - containerPort: 8080
+            - containerPort: 2022
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: docker-sock
+              mountPath: /var/run/docker.sock
+            - name: docker-containers
+              mountPath: /var/lib/docker/containers
+            - name: config
+              mountPath: /etc/pelican
+            - name: volumes
+              mountPath: /var/lib/pelican/volumes
+            - name: tmp
+              mountPath: /tmp/pelican
+      volumes:
+        - name: docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket
+        - name: docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+            type: Directory
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/pelican-wings/config
+            type: DirectoryOrCreate
+        - name: volumes
+          hostPath:
+            path: /home/cif/homelab/data/pelican-servers
+            type: DirectoryOrCreate
+        - name: tmp
+          hostPath:
+            path: /tmp/pelican
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pelican-wings
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8085
+      targetPort: 8080
+      name: http
+    - port: 2022
+      targetPort: 2022
+      name: sftp
+  selector:
+    app: pelican-wings

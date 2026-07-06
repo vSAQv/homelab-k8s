@@ -1,0 +1,69 @@
+# apps/books/bookshelf-audio.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookshelf-audio
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bookshelf-audio
+  template:
+    metadata:
+      labels:
+        app: bookshelf-audio
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: bookshelf-audio
+          image: ghcr.io/pennydreadful/bookshelf:hardcover
+          ports:
+            - containerPort: 8787
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/bookshelf-audio
+            type: DirectoryOrCreate
+        - name: data
+          hostPath:
+            path: /home/cif/homelab/data
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookshelf-audio
+spec:
+  type: LoadBalancer
+  ports:
+    # Exposing on 8788 externally but targeting 8787 internally
+    - port: 8788
+      targetPort: 8787
+  selector:
+    app: bookshelf-audio

@@ -1,0 +1,58 @@
+# apps/databases/pelican-db.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pelican-db
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pelican-db
+  template:
+    metadata:
+      labels:
+        app: pelican-db
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.6
+          env:
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+            - name: MYSQL_DATABASE
+              value: "pelican"
+            - name: MYSQL_USER
+              value: "pelican"
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PL_DB_PASS
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PL_DB_ROOT_PASS
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: db-data
+          hostPath:
+            path: /home/cif/homelab/config/pelican-db
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pelican-db
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3306
+  selector:
+    app: pelican-db

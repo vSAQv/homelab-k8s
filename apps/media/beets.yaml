@@ -1,0 +1,61 @@
+# apps/media/beets.yaml
+# Beets generally runs as a batch/cron job processor and does not expose a web UI by default
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beets
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beets
+  template:
+    metadata:
+      labels:
+        app: beets
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: beets
+          image: lscr.io/linuxserver/beets:latest
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "100"
+            - name: TZ
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TZ
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: crontabs
+              mountPath: /config/crontabs
+            - name: music
+              mountPath: /music
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/beets
+            type: DirectoryOrCreate
+        - name: crontabs
+          hostPath:
+            path: /home/cif/homelab/config/beets/crontabs
+            type: DirectoryOrCreate
+        - name: music
+          hostPath:
+            path: /home/cif/homelab/data/music
+            type: Directory

@@ -1,0 +1,40 @@
+# apps/network/spoofdpi.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spoofdpi
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spoofdpi
+  template:
+    metadata:
+      labels:
+        app: spoofdpi
+    spec:
+      containers:
+        - name: spoofdpi
+          image: ghcr.io/unmedius/spoof-dpi:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spoofdpi
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8889
+      targetPort: 8080
+  selector:
+    app: spoofdpi

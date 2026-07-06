@@ -1,0 +1,54 @@
+# apps/network/tailscale.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale-proxy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale-proxy
+  template:
+    metadata:
+      labels:
+        app: tailscale-proxy
+    spec:
+      containers:
+        - name: tailscale
+          image: alpine:latest
+          command: ["/entrypoint.sh"]
+          securityContext:
+            capabilities:
+              add: ["NET_ADMIN", "NET_RAW"]
+          env:
+            - name: TS_AUTHKEY
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: TS_KEY
+            - name: PROXY_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: PROXY_FULL_AUTH
+          volumeMounts:
+            - name: config
+              mountPath: /var/lib/tailscale
+            - name: entrypoint
+              mountPath: /entrypoint.sh
+              readOnly: true
+            - name: tun
+              mountPath: /dev/net/tun
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/tailscale-proxy-exit
+            type: DirectoryOrCreate
+        - name: entrypoint
+          hostPath:
+            path: /home/cif/homelab/config/tailscale-proxy-exit/proxy-entrypoint.sh
+            type: File
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
