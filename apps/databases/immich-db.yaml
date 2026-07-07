@@ -17,7 +17,7 @@ spec:
       containers:
         - name: postgres
           image: tensorchord/pgvecto-rs:pg14-v0.2.0
-          command: ["postgres", "-c", "shared_preload_libraries=vectors.so", "-c", "search_path=\"$$user\", public, vectors", "-c", "logging_collector=on", "-c", "max_wal_size=2GB", "-c", "shared_buffers=512MB", "-c", "wal_compression=on"]
+          args: ["postgres", "-c", "shared_preload_libraries=vectors.so", "-c", "search_path=\"$$user\", public, vectors", "-c", "logging_collector=on", "-c", "max_wal_size=2GB", "-c", "shared_buffers=512MB", "-c", "wal_compression=on"]
           env:
             - name: TZ
               valueFrom:

@@ -19,7 +19,7 @@ spec:
           image: qmcgaw/gluetun:latest
           securityContext:
             capabilities:
-              add: ["NET_ADMIN"]
+              add: ["NET_ADMIN", "NET_RAW"]
           env:
             - name: VPN_SERVICE_PROVIDER
               value: "protonvpn"
