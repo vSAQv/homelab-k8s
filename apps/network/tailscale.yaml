@@ -27,7 +27,7 @@ spec:
                 secretKeyRef:
                   name: homelab-secrets
                   key: TS_KEY
-            - name: PROXY_AUTH
+            - name: PROXY_URL
               valueFrom:
                 secretKeyRef:
                   name: homelab-secrets

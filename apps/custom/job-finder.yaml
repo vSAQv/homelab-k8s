@@ -57,18 +57,18 @@ spec:
             sizeLimit: 1Gi
         - name: config
           hostPath:
-            path: /home/cif/homelab/config/jobFinder/config.yaml
+            path: /home/cif/homelab/config/job-finder/config.yaml
             type: FileOrCreate
         - name: db
           hostPath:
-            path: /home/cif/homelab/config/jobFinder/applied.db
+            path: /home/cif/homelab/config/job-finder/applied.db
             type: FileOrCreate
         - name: state
           hostPath:
             # Must be generated manually via auth_setup.py before deployment
-            path: /home/cif/homelab/config/jobFinder/state.json
+            path: /home/cif/homelab/config/job-finder/state.json
             type: File
         - name: resumes
           hostPath:
-            path: /home/cif/homelab/config/jobFinder/resumes
+            path: /home/cif/homelab/config/job-finder/resumes
             type: DirectoryOrCreate
