@@ -21,6 +21,10 @@ spec:
             capabilities:
               add: ["NET_ADMIN", "NET_RAW"]
           env:
+            - name: WIREGUARD_IMPLEMENTATION 
+              value: "userspace"
+            - name: DOT
+              value: "off"
             - name: VPN_SERVICE_PROVIDER
               value: "protonvpn"
             - name: VPN_TYPE
