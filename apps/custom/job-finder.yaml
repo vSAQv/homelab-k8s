@@ -20,7 +20,7 @@ spec:
         fsGroup: 100
       containers:
         - name: job-finder
-          image: ghcr.io/vSAQv/job-finder:latest
+          image: ghcr.io/vsaqv/job-finder:latest
           env:
             - name: OPENROUTER_API_KEY
               valueFrom:
