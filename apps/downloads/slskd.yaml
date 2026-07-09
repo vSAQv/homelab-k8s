@@ -58,12 +58,12 @@ spec:
                 secretKeyRef:
                   name: homelab-secrets
                   key: SL_PASSWORD
-            - name: SLSKD_SL_USERNAME
+            - name: SLSKD_SLSK_USERNAME
               valueFrom:
                 secretKeyRef:
                   name: homelab-secrets
                   key: SL_SL_USERNAME
-            - name: SLSKD_SL_PASSWORD
+            - name: SLSKD_SLSK_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: homelab-secrets
