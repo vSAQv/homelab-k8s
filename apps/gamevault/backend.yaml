@@ -73,7 +73,7 @@ spec:
             type: DirectoryOrCreate
         - name: games
           hostPath:
-            path: /mnt/win_share/games
+            path: /mnt/shared/gaming/games
             type: Directory
 ---
 apiVersion: v1
