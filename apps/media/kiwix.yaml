@@ -1,0 +1,56 @@
+---
+# apps/media/kiwix.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kiwix
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kiwix
+  template:
+    metadata:
+      labels:
+        app: kiwix
+    spec:
+      containers:
+        - name: kiwix
+          image: ghcr.io/kiwix/kiwix-serve:latest
+          # We run via sh -c to ensure the shell expands the "*.zim" wildcard
+          command: ["/bin/sh", "-c"]
+          args: ["kiwix-serve --port 8080 --address 0.0.0.0 /data/*.zim"]
+          ports:
+            - containerPort: 8080
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: zim-data
+              mountPath: /data
+      volumes:
+        - name: zim-data
+          hostPath:
+            # Place your downloaded .zim files in this directory
+            path: /home/cif/homelab/data/media/wikipedia
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kiwix
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8088
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: kiwix
