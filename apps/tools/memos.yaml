@@ -1,0 +1,56 @@
+---
+# apps/tools/memos.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memos
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memos
+  template:
+    metadata:
+      labels:
+        app: memos
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: memos
+          image: neosmemo/memos:latest
+          ports:
+            - containerPort: 5230
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: data
+              mountPath: /var/opt/memos
+      volumes:
+        - name: data
+          hostPath:
+            path: /home/cif/homelab/config/memos
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: memos
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5230
+      targetPort: 5230
+      protocol: TCP
+  selector:
+    app: memos
