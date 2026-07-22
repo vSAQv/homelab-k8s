@@ -1,8 +1,7 @@
-{
-  pkgs,
-  lib,
-  config,
-  ...
+{ pkgs
+, lib
+, config
+, ...
 }: {
   # Core tools for Kubernetes administration and homelab deployment
   packages = with pkgs; [
@@ -17,13 +16,14 @@
   # Environment variables for the shell session
   env = {
     # KUBECONFIG = "./.kube/config"; # Uncomment to isolate local cluster state
+    KUBECONFIG = "/etc/rancher/k3s/k3s.yaml";
   };
 
   # Local PostgreSQL instance for database schema testing (runs rootless, without Docker)
   services.postgres = {
     enable = true;
     initialDatabases = [
-      {name = "homelab_dev";}
+      { name = "homelab_dev"; }
     ];
     port = 5432;
   };
