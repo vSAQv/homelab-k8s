@@ -1,0 +1,80 @@
+---
+# apps/network/ntfy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:latest
+          command: ["ntfy", "serve"]
+          ports:
+            - containerPort: 80
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/ntfy/server.yml
+              subPath: server.yml
+            - name: cache
+              mountPath: /var/cache/ntfy
+      volumes:
+        - name: config
+          configMap:
+            name: ntfy-config
+        - name: cache
+          hostPath:
+            path: /home/cif/homelab/config/ntfy/cache
+            type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-config
+  namespace: default
+data:
+  server.yml: |
+    base-url: "http://192.168.1.42:18086"
+    listen-http: ":80"
+
+    # SQLite cache file for offline message delivery
+    cache-file: "/var/cache/ntfy/cache.db"
+
+    # Essential for iOS instant notifications
+    # (relays pushes through free ntfy.sh servers)
+    upstream-dest: "https://ntfy.sh"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: default
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 18086
+      targetPort: 80
+      protocol: TCP
+  selector:
+    app: ntfy
