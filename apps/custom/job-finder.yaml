@@ -6,7 +6,7 @@ metadata:
   name: job-finder
   namespace: default
 spec:
-  replicas: 1
+  replicas: 0   # temorary diactivated
   selector:
     matchLabels:
       app: job-finder
