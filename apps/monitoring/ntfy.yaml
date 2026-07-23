@@ -32,6 +32,14 @@ spec:
         - name: ntfy
           image: binwiederhier/ntfy:latest
           command: ["ntfy", "serve"]
+          env:
+            - name: NTFY_AUTH_USERS
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: NTFY_AUTH_USERS
+            - name: NTFY_AUTH_ACCESS
+              value: "monitoring_bot:alerts:write-only"
           ports:
             - containerPort: 80
               name: http
@@ -66,13 +74,11 @@ data:
   server.yml: |
     base-url: "http://192.168.1.42:18086"
     listen-http: ":80"
-
-    # SQLite cache file for offline message delivery
     cache-file: "/var/cache/ntfy/cache.db"
-
-    # Essential for iOS instant notifications
-    # (relays pushes through free ntfy.sh servers)
     upstream-dest: "https://ntfy.sh"
+    auth-file: "/var/cache/ntfy/user.db"
+    auth-default-access: "deny-all"
+    enable-login: true
 ---
 apiVersion: v1
 kind: Service
