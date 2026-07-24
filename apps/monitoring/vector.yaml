@@ -39,11 +39,47 @@ data:
     sources:
       kubernetes_logs:
         type: "kubernetes_logs"
+    transforms:
+      process_logs:
+        type: "remap"
+        inputs:
+          - "kubernetes_logs"
+        source: |
+          ignored_namespaces = [
+            "kube-system",
+            "kube-public",
+            "kube-node-lease",
+            "local-path-storage"
+          ]
+          id, err = .kubernetes.namespace
+          if err == null && contains(ignored_namespaces, id) {
+            abort
+          }
+          if exists(.kubernetes.pod_labels.logging) {
+            if .kubernetes.pod_labels.logging == "skip" {
+              abort
+            }
+          }
+          if msg, err = string(.message); err == null {
+            if parsed, err = parse_json(msg); err == null {
+              ., err = merge(., parsed)
+              del(.message)
+            }
+          }
+          del(.kubernetes.pod_ip)
+          del(.kubernetes.pod_ips)
+          del(.kubernetes.pod_owner)
+          del(.kubernetes.pod_uid)
+          del(.kubernetes.container_id)
+          del(.kubernetes.container_image_id)
+          del(.kubernetes.node_labels)
+          del(.kubernetes.pod_node_name)
+          del(.file)
     sinks:
       openobserve:
         type: "http"
         inputs:
-          - "kubernetes_logs"
+          - "process_logs"
         uri: "http://openobserve:5080/api/default/default/_json"
         method: "post"
         auth:
