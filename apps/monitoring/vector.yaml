@@ -1,5 +1,5 @@
----
 # apps/monitoring/vector.yaml
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -44,7 +44,6 @@ data:
         type: "http"
         inputs:
           - "kubernetes_logs"
-        # Internal cluster service endpoint
         uri: "http://openobserve:5080/api/default/default/_json"
         method: "post"
         auth:
@@ -99,9 +98,6 @@ spec:
             - name: varlog
               mountPath: /var/log
               readOnly: true
-            - name: varlib
-              mountPath: /var/lib
-              readOnly: true
           resources:
             requests:
               memory: "64Mi"
@@ -118,6 +114,3 @@ spec:
         - name: varlog
           hostPath:
             path: /var/log
-        - name: varlib
-          hostPath:
-            path: /var/lib
