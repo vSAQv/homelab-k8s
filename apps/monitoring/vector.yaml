@@ -1,5 +1,5 @@
-# apps/monitoring/vector.yaml
 ---
+# apps/monitoring/vector.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -12,7 +12,7 @@ metadata:
   name: vector
 rules:
   - apiGroups: [""]
-    resources: ["pods", "namespaces", "nodes"]
+    resources: ["pods", "namespaces", "nodes", "events"]
     verbs: ["get", "list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -39,6 +39,26 @@ data:
     sources:
       kubernetes_logs:
         type: "kubernetes_logs"
+      kubernetes_events:
+        type: "kubernetes_events"
+      host_metrics:
+        type: "host_metrics"
+        scrape_interval_secs: 15
+      gpu_metrics_intel:
+        type: "prometheus_scrape"
+        endpoints:
+          - "http://intel-gpu-exporter.default.svc.cluster.local:9402/metrics"
+        scrape_interval_secs: 15
+      gpu_metrics_amd:
+        type: "prometheus_scrape"
+        endpoints:
+          - "http://amd-gpu-exporter.default.svc.cluster.local:9401/metrics"
+        scrape_interval_secs: 15
+      gpu_metrics_nvidia:
+        type: "prometheus_scrape"
+        endpoints:
+          - "http://nvidia-gpu-exporter.default.svc.cluster.local:9400/metrics"
+        scrape_interval_secs: 15
     transforms:
       process_logs:
         type: "remap"
@@ -49,7 +69,8 @@ data:
             "kube-system",
             "kube-public",
             "kube-node-lease",
-            "local-path-storage"
+            "local-path-storage",
+            "node-feature-discovery"
           ]
           id, err = .kubernetes.namespace
           if err == null && contains(ignored_namespaces, id) {
@@ -76,7 +97,7 @@ data:
           del(.kubernetes.pod_node_name)
           del(.file)
     sinks:
-      openobserve:
+      openobserve_logs:
         type: "http"
         inputs:
           - "process_logs"
@@ -90,6 +111,36 @@ data:
         encoding:
           codec: "json"
           timestamp_format: "rfc3339"
+        healthcheck:
+          enabled: false
+      openobserve_events:
+        type: "http"
+        inputs:
+          - "kubernetes_events"
+        uri: "http://openobserve:5080/api/default/k8s_events/_json"
+        method: "post"
+        auth:
+          strategy: "basic"
+          user: "${OO_ROOT_USER_EMAIL}"
+          password: "${OO_ROOT_USER_PASSWORD}"
+        compression: "gzip"
+        encoding:
+          codec: "json"
+          timestamp_format: "rfc3339"
+        healthcheck:
+          enabled: false
+      openobserve_metrics:
+        type: "prometheus_remote_write"
+        inputs:
+          - "host_metrics"
+          - "gpu_metrics_intel"
+          - "gpu_metrics_amd"
+          - "gpu_metrics_nvidia"
+        endpoint: "http://openobserve:5080/api/default/prometheus/api/v1/write"
+        auth:
+          strategy: "basic"
+          user: "${OO_ROOT_USER_EMAIL}"
+          password: "${OO_ROOT_USER_PASSWORD}"
         healthcheck:
           enabled: false
 ---
@@ -126,6 +177,10 @@ spec:
                 secretKeyRef:
                   name: homelab-secrets
                   key: OO_ROOT_USER_PASSWORD
+            - name: PROCFS_ROOT
+              value: "/host/proc"
+            - name: SYSFS_ROOT
+              value: "/host/sys"
           volumeMounts:
             - name: config
               mountPath: /etc/vector
@@ -133,6 +188,12 @@ spec:
               mountPath: /var/lib/vector
             - name: varlog
               mountPath: /var/log
+              readOnly: true
+            - name: procfs
+              mountPath: /host/proc
+              readOnly: true
+            - name: sysfs
+              mountPath: /host/sys
               readOnly: true
           resources:
             requests:
@@ -150,3 +211,9 @@ spec:
         - name: varlog
           hostPath:
             path: /var/log
+        - name: procfs
+          hostPath:
+            path: /proc
+        - name: sysfs
+          hostPath:
+            path: /sys

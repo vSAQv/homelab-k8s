@@ -1,0 +1,13 @@
+# apps/monitoring/nfd.yaml
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: node-feature-discovery
+  namespace: kube-system
+spec:
+  chart: node-feature-discovery
+  repo: https://kubernetes-sigs.github.io/node-feature-discovery/charts
+  targetNamespace: node-feature-discovery
+  createNamespace: true
+  version: 0.15.3

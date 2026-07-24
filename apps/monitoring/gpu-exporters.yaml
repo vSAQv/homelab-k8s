@@ -1,0 +1,133 @@
+---
+# apps/monitoring/gpu-exporters.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: intel-gpu-exporter
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+    - port: 9402
+      name: metrics
+  selector:
+    app: intel-gpu-exporter
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: intel-gpu-exporter
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: intel-gpu-exporter
+  template:
+    metadata:
+      labels:
+        app: intel-gpu-exporter
+    spec:
+      nodeSelector:
+        feature.node.kubernetes.io/pci-0300_8086.present: "true"
+      containers:
+        - name: exporter
+          image: quay.io/galexrt/intel-gpu-exporter:latest
+          args: ["-web.listen-address", ":9402"]
+          ports:
+            - containerPort: 9402
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: dri
+              mountPath: /dev/dri
+      volumes:
+        - name: dri
+          hostPath:
+            path: /dev/dri
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: amd-gpu-exporter
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+    - port: 9401
+      name: metrics
+  selector:
+    app: amd-gpu-exporter
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: amd-gpu-exporter
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: amd-gpu-exporter
+  template:
+    metadata:
+      labels:
+        app: amd-gpu-exporter
+    spec:
+      nodeSelector:
+        feature.node.kubernetes.io/pci-0300_1002.present: "true"
+      containers:
+        - name: exporter
+          image: ghcr.io/jkroepke/amd-gpu-exporter:latest
+          args: ["--web.listen-address", ":9401"]
+          ports:
+            - containerPort: 9401
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: sys
+              mountPath: /sys
+      volumes:
+        - name: sys
+          hostPath:
+            path: /sys
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvidia-gpu-exporter
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+    - port: 9400
+      name: metrics
+  selector:
+    app: nvidia-gpu-exporter
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-gpu-exporter
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-gpu-exporter
+  template:
+    metadata:
+      labels:
+        app: nvidia-gpu-exporter
+    spec:
+      runtimeClassName: nvidia
+      nodeSelector:
+        feature.node.kubernetes.io/pci-0300_10de.present: "true"
+      containers:
+        - name: exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
+          env:
+            - name: DCGM_EXPORTER_LISTEN
+              value: ":9400"
+          ports:
+            - containerPort: 9400
+          securityContext:
+            capabilities:
+              add: ["SYS_ADMIN"]
