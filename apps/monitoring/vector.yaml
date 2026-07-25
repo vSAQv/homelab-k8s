@@ -1,5 +1,4 @@
 ---
-# apps/monitoring/vector.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -39,15 +38,13 @@ data:
     sources:
       kubernetes_logs:
         type: "kubernetes_logs"
-      kubernetes_events:
-        type: "kubernetes_events"
       host_metrics:
         type: "host_metrics"
         scrape_interval_secs: 15
       gpu_metrics_intel:
         type: "prometheus_scrape"
         endpoints:
-          - "http://intel-gpu-exporter.default.svc.cluster.local:9402/metrics"
+          - "http://intel-gpu-exporter.default.svc.cluster.local:9100/metrics"
         scrape_interval_secs: 15
       gpu_metrics_amd:
         type: "prometheus_scrape"
@@ -102,22 +99,6 @@ data:
         inputs:
           - "process_logs"
         uri: "http://openobserve:5080/api/default/default/_json"
-        method: "post"
-        auth:
-          strategy: "basic"
-          user: "${OO_ROOT_USER_EMAIL}"
-          password: "${OO_ROOT_USER_PASSWORD}"
-        compression: "gzip"
-        encoding:
-          codec: "json"
-          timestamp_format: "rfc3339"
-        healthcheck:
-          enabled: false
-      openobserve_events:
-        type: "http"
-        inputs:
-          - "kubernetes_events"
-        uri: "http://openobserve:5080/api/default/k8s_events/_json"
         method: "post"
         auth:
           strategy: "basic"

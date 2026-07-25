@@ -1,5 +1,8 @@
 ---
 # apps/monitoring/gpu-exporters.yaml
+# ==========================================
+# 1. INTEL GPU EXPORTER (Port 9100)
+# ==========================================
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,7 +11,7 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - port: 9402
+    - port: 9100
       name: metrics
   selector:
     app: intel-gpu-exporter
@@ -31,10 +34,9 @@ spec:
         feature.node.kubernetes.io/pci-0300_8086.present: "true"
       containers:
         - name: exporter
-          image: quay.io/galexrt/intel-gpu-exporter:latest
-          args: ["-web.listen-address", ":9402"]
+          image: ghcr.io/clambin/intel-gpu-exporter:latest
           ports:
-            - containerPort: 9402
+            - containerPort: 9100
           securityContext:
             privileged: true
           volumeMounts:
@@ -44,6 +46,10 @@ spec:
         - name: dri
           hostPath:
             path: /dev/dri
+
+# ==========================================
+# 2. AMD GPU EXPORTER (Port 9401)
+# ==========================================
 ---
 apiVersion: v1
 kind: Service
@@ -89,6 +95,10 @@ spec:
         - name: sys
           hostPath:
             path: /sys
+
+# ==========================================
+# 3. NVIDIA GPU EXPORTER (Port 9400)
+# ==========================================
 ---
 apiVersion: v1
 kind: Service
@@ -118,8 +128,18 @@ spec:
         app: nvidia-gpu-exporter
     spec:
       runtimeClassName: nvidia
-      nodeSelector:
-        feature.node.kubernetes.io/pci-0300_10de.present: "true"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              # Поддержка десктопных видеокарт (VGA Controller)
+              - matchExpressions:
+                  - key: feature.node.kubernetes.io/pci-0300_10de.present
+                    operator: Exists
+              # Поддержка мобильных/гибридных видеокарт (3D Controller)
+              - matchExpressions:
+                  - key: feature.node.kubernetes.io/pci-0302_10de.present
+                    operator: Exists
       containers:
         - name: exporter
           image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04
