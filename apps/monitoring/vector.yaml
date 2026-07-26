@@ -87,7 +87,7 @@ data:
           if .kubernetes.container_name == "event-exporter" {
             parsed = parse_json(.message) ?? null
             if is_object(parsed) {
-              .body = parsed
+              . = merge(., parsed) ?? .
               del(.message)
             } else {
               # Drop startup text logs to prevent schema corruption
