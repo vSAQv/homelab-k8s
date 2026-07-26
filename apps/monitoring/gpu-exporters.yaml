@@ -10,7 +10,7 @@ metadata:
 spec:
   ports:
     - port: 9100
-      targetPort: 8080
+      targetPort: 9100
       name: metrics
   selector:
     app: intel-gpu-exporter
@@ -35,11 +35,8 @@ spec:
       containers:
         - name: exporter
           image: ghcr.io/clambin/intel-gpu-exporter:latest
-          args:
-            - "--interval=5s"
-            - "--device=drm:/dev/dri/card0"
           ports:
-            - containerPort: 8080
+            - containerPort: 9100
           securityContext:
             privileged: true
           volumeMounts:
