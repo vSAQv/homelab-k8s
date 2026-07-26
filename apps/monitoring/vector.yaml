@@ -35,6 +35,7 @@ metadata:
 data:
   vector.yaml: |
     data_dir: "/var/lib/vector"
+
     sources:
       kubernetes_logs:
         type: "kubernetes_logs"
@@ -56,12 +57,14 @@ data:
         endpoints:
           - "http://nvidia-gpu-exporter.default.svc.cluster.local:9400/metrics"
         scrape_interval_secs: 15
+
     transforms:
       process_logs:
         type: "remap"
         inputs:
           - "kubernetes_logs"
         source: |
+          ns = string(.kubernetes.namespace) ?? ""
           ignored_namespaces = [
             "kube-system",
             "kube-public",
@@ -69,21 +72,25 @@ data:
             "local-path-storage",
             "node-feature-discovery"
           ]
-          id, err = .kubernetes.namespace
-          if err == null && contains(ignored_namespaces, id) {
+
+          if includes(ignored_namespaces, ns) {
             abort
           }
+
           if exists(.kubernetes.pod_labels.logging) {
             if .kubernetes.pod_labels.logging == "skip" {
               abort
             }
           }
-          if msg, err = string(.message); err == null {
-            if parsed, err = parse_json(msg); err == null {
-              ., err = merge(., parsed)
+
+          if is_string(.message) {
+            parsed, err = parse_json(.message)
+            if err == null {
+              . = merge(., parsed)
               del(.message)
             }
           }
+
           del(.kubernetes.pod_ip)
           del(.kubernetes.pod_ips)
           del(.kubernetes.pod_owner)
@@ -93,11 +100,21 @@ data:
           del(.kubernetes.node_labels)
           del(.kubernetes.pod_node_name)
           del(.file)
+
+      # Isolate k8s events from standard application logs
+      route_streams:
+        type: "route"
+        inputs:
+          - "process_logs"
+        route:
+          events: '.kubernetes.container_name == "event-exporter"'
+          logs: '.kubernetes.container_name != "event-exporter"'
+
     sinks:
       openobserve_logs:
         type: "http"
         inputs:
-          - "process_logs"
+          - "route_streams.logs"
         uri: "http://openobserve:5080/api/default/default/_json"
         method: "post"
         auth:
@@ -110,6 +127,24 @@ data:
           timestamp_format: "rfc3339"
         healthcheck:
           enabled: false
+
+      openobserve_events:
+        type: "http"
+        inputs:
+          - "route_streams.events"
+        uri: "http://openobserve:5080/api/default/k8s_events/_json"
+        method: "post"
+        auth:
+          strategy: "basic"
+          user: "${OO_ROOT_USER_EMAIL}"
+          password: "${OO_ROOT_USER_PASSWORD}"
+        compression: "gzip"
+        encoding:
+          codec: "json"
+          timestamp_format: "rfc3339"
+        healthcheck:
+          enabled: false
+
       openobserve_metrics:
         type: "prometheus_remote_write"
         inputs:

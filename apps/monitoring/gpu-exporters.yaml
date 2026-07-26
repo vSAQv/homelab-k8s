@@ -132,11 +132,11 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              # Поддержка десктопных видеокарт (VGA Controller)
+              # desktop gpu support (VGA Controller)
               - matchExpressions:
                   - key: feature.node.kubernetes.io/pci-0300_10de.present
                     operator: Exists
-              # Поддержка мобильных/гибридных видеокарт (3D Controller)
+              # hybrid/mobile gpu support (3D Controller)
               - matchExpressions:
                   - key: feature.node.kubernetes.io/pci-0302_10de.present
                     operator: Exists
