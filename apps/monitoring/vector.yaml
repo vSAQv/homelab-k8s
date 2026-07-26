@@ -83,15 +83,24 @@ data:
             }
           }
 
-          if is_string(.message) {
+          # Handle event-exporter logs separately to enforce strict JSON schema
+          if .kubernetes.container_name == "event-exporter" {
             parsed = parse_json(.message) ?? null
             if is_object(parsed) {
-              if .kubernetes.container_name == "event-exporter" {
-                .body = parsed
-              } else {
-                . = merge(., parsed) ?? .
-              }
+              .body = parsed
               del(.message)
+            } else {
+              # Drop startup text logs to prevent schema corruption
+              abort
+            }
+          } else {
+            # Standard application logs
+            if is_string(.message) {
+              parsed = parse_json(.message) ?? null
+              if is_object(parsed) {
+                . = merge(., parsed) ?? .
+                del(.message)
+              }
             }
           }
 
