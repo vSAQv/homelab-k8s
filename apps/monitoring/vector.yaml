@@ -84,11 +84,13 @@ data:
           }
 
           if is_string(.message) {
-            parsed, err = parse_json(.message)
-            if err == null {
-              . = merge(., parsed)
-              del(.message)
+            # Safely parse JSON with fallback to an empty object
+            parsed = parse_json(.message) ?? {}
+            if is_object(parsed) {
+              # Safely merge with fallback to the current object
+              . = merge(., parsed) ?? .
             }
+            del(.message)
           }
 
           del(.kubernetes.pod_ip)
@@ -101,7 +103,6 @@ data:
           del(.kubernetes.pod_node_name)
           del(.file)
 
-      # Isolate k8s events from standard application logs
       route_streams:
         type: "route"
         inputs:
@@ -159,6 +160,13 @@ data:
           password: "${OO_ROOT_USER_PASSWORD}"
         healthcheck:
           enabled: false
+
+      # Explicitly drop unmatched logs to eliminate configuration warnings
+      drop_unmatched:
+        type: "blackhole"
+        inputs:
+          - "route_streams._unmatched"
+        print_interval_secs: 0
 ---
 apiVersion: apps/v1
 kind: DaemonSet
