@@ -1,3 +1,6 @@
+# ==========================================
+# 1. INTEL GPU EXPORTER (Port 9100)
+# ==========================================
 ---
 apiVersion: v1
 kind: Service
@@ -26,22 +29,30 @@ spec:
       labels:
         app: intel-gpu-exporter
     spec:
+      hostPID: true
       nodeSelector:
         feature.node.kubernetes.io/pci-0300_8086.present: "true"
       containers:
         - name: exporter
           image: ghcr.io/clambin/intel-gpu-exporter:latest
+          args:
+            - "--interval=5s"
+            - "--device=drm:/dev/dri/card0"
           ports:
             - containerPort: 8080
           securityContext:
             privileged: true
           volumeMounts:
-            - name: dri
+            - name: dev-dri
               mountPath: /dev/dri
       volumes:
-        - name: dri
+        - name: dev-dri
           hostPath:
             path: /dev/dri
+
+# ==========================================
+# 2. AMD GPU EXPORTER (Port 9401)
+# ==========================================
 ---
 apiVersion: v1
 kind: Service
@@ -86,8 +97,11 @@ spec:
         - name: sys
           hostPath:
             path: /sys
+
+# ==========================================
+# 3. NVIDIA GPU EXPORTER (Port 9400)
+# ==========================================
 ---
-# Define the RuntimeClass required by the nvidia-gpu-exporter
 apiVersion: node.k8s.io/v1
 kind: RuntimeClass
 metadata:
