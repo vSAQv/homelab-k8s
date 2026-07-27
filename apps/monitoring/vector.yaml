@@ -37,7 +37,7 @@ data:
     data_dir: "/var/lib/vector"
 
     sources:
-      kubernetes_logs:ve
+      kubernetes_logs:
         type: "kubernetes_logs"
       host_metrics:
         type: "host_metrics"
