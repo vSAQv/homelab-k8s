@@ -37,7 +37,7 @@ data:
     data_dir: "/var/lib/vector"
 
     sources:
-      kubernetes_logs:
+      kubernetes_logs:ve
         type: "kubernetes_logs"
       host_metrics:
         type: "host_metrics"
@@ -89,6 +89,11 @@ data:
             if is_object(parsed) {
               . = merge(., parsed) ?? .
               del(.message)
+
+    # Map Kubernetes native 'type' to 'severity' for OpenObserve dashboards
+              if exists(.type) {
+                .severity = .type
+              }
             } else {
               # Drop startup text logs to prevent schema corruption
               abort
