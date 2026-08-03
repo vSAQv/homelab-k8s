@@ -90,7 +90,7 @@ data:
               . = merge(., parsed) ?? .
               del(.message)
 
-    # Map Kubernetes native 'type' to 'severity' for OpenObserve dashboards
+              # Map Kubernetes native 'type' to 'severity' for OpnObserve boards
               if exists(.type) {
                 .severity = .type
               }
