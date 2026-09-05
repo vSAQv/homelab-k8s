@@ -15,6 +15,10 @@ spec:
       labels:
         app: kiwix
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
       containers:
         - name: kiwix
           image: ghcr.io/kiwix/kiwix-serve:latest
@@ -38,8 +42,8 @@ spec:
         - name: zim-data
           hostPath:
             # Place your downloaded .zim files in this directory
-            path: /home/cif/homelab/data/media/wikipedia
-            type: DirectoryOrCreate
+            path: /home/cif/homelab/data/wikipedia
+            type: Directory
 ---
 apiVersion: v1
 kind: Service
