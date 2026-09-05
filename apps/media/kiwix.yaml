@@ -24,7 +24,7 @@ spec:
           image: ghcr.io/kiwix/kiwix-serve:latest
           # We run via sh -c to ensure the shell expands the "*.zim" wildcard
           command: ["/bin/sh", "-c"]
-          args: ["kiwix-serve --port 8080 --address 0.0.0.0 /data/*.zim"]
+          args: ["kiwix-serve --port 8080 /data/*.zim"]
           ports:
             - containerPort: 8080
               name: http
