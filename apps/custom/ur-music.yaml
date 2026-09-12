@@ -1,0 +1,280 @@
+---
+# yamllint disable rule:line-length
+# Playlist URLs are public configuration, not credentials.
+# Keep credentials in
+# homelab-secrets and update this ConfigMap when the source playlists change.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ur-music-config
+  namespace: default
+data:
+  PLAYLIST_URLS: >-
+    https://www.youtube.com/playlist?list=PLFS0A3AYl_QzBCoMuLQAaioq9FhaKeCFN,
+    https://music.yandex.com/users/gaylord24/playlists/1013,
+    https://open.spotify.com/playlist/4I2U62HaUvxTlljOXj2d7g
+# yamllint enable rule:line-length
+---
+# Publish ghcr.io/vsaqv/ur-music:latest before enabling this Job.
+# Keep suspend=true until a manual Job has been validated against
+# the live queue.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ur-music
+  namespace: default
+spec:
+  schedule: "0 * * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3300
+      template:
+        metadata:
+          labels:
+            app: ur-music
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 100
+            fsGroup: 100
+          containers:
+            - name: ur-music
+              image: ghcr.io/vsaqv/ur-music:latest
+              imagePullPolicy: Always
+              env:
+                - name: SLSKD_URL
+                  value: http://slskd:5030
+                - name: METUBE_URL
+                  value: http://metube:8081
+                - name: NAVIDROME_URL
+                  value: http://navidrome:4533
+                - name: DOWNLOAD_DIR
+                  value: /music
+                - name: HISTORY_FILE
+                  value: /config/sync_history.json
+                - name: SYNC_QUEUE_FILE
+                  value: /config/download_queue.json
+                - name: SYNC_LOG_FILE
+                  value: /config/sync_music.log
+                - name: SEARCH_TIMEOUT
+                  value: "90"
+                - name: QUEUE_TIMEOUT_HOURS
+                  value: "4"
+                - name: MAX_RETRIES
+                  value: "3"
+                - name: RETRY_DELAY_SECONDS
+                  value: "900"
+                - name: SLSKD_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: SL_USERNAME
+                - name: SLSKD_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: SL_PASSWORD
+                - name: SPOTIFY_CLIENT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: SPOTIFY_ID
+                - name: SPOTIFY_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: SPOTIFY_SECRET
+                - name: PLAYLIST_URLS
+                  valueFrom:
+                    configMapKeyRef:
+                      name: ur-music-config
+                      key: PLAYLIST_URLS
+                - name: OPENROUTER_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: OPENROUTER_API_KEY
+                      optional: true
+                - name: OPENROUTER_MODEL
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: OPENROUTER_MODEL
+                      optional: true
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "1000m"
+                  memory: "1Gi"
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+                - name: music
+                  mountPath: /music
+          volumes:
+            - name: config
+              hostPath:
+                path: /home/cif/homelab/config/sync_music
+                type: DirectoryOrCreate
+            - name: music
+              hostPath:
+                path: /home/cif/homelab/data/music
+                type: Directory
+---
+# ListenBrainz recommendations are one-shot and stateful. The script itself
+# decides whether weekly or monthly rotation is due.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ur-music-discovery
+  namespace: default
+spec:
+  schedule: "15 */6 * * *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 900
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        metadata:
+          labels:
+            app: ur-music-discovery
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 100
+            fsGroup: 100
+          containers:
+            - name: discovery
+              image: ghcr.io/vsaqv/ur-music:latest
+              imagePullPolicy: Always
+              command: ["python", "/app/listenbrainz_discovery.py"]
+              env:
+                - name: NAVIDROME_URL
+                  value: http://navidrome:4533
+                - name: NAVIDROME_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: NAVIDROME_USER
+                - name: NAVIDROME_PASS
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: NAVIDROME_PASS
+                - name: LISTENBRAINZ_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: LISTENBRAINZ_TOKEN
+                - name: LISTENBRAINZ_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: homelab-secrets
+                      key: LISTENBRAINZ_USER
+                - name: STATE_FILE
+                  value: /config/discovery_state.json
+                - name: SYNC_QUEUE_FILE
+                  value: /config/download_queue.json
+                - name: DISCOVERY_LOG_FILE
+                  value: /config/discovery.log
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              volumeMounts:
+                - name: config
+                  mountPath: /config
+          volumes:
+            - name: config
+              hostPath:
+                path: /home/cif/homelab/config/sync_music
+                type: DirectoryOrCreate
+---
+# File deletion is intentionally disabled until the first manual validation.
+# Set replicas to 1 only after confirming Navidrome paths map to /music.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ur-music-delete
+  namespace: default
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: ur-music-delete
+  template:
+    metadata:
+      labels:
+        app: ur-music-delete
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 100
+        fsGroup: 100
+      containers:
+        - name: delete-daemon
+          image: ghcr.io/vsaqv/ur-music:latest
+          imagePullPolicy: Always
+          command: ["python", "/app/delete_daemon.py"]
+          env:
+            - name: NAVIDROME_URL
+              value: http://navidrome:4533
+            - name: NAVIDROME_USER
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: NAVIDROME_USER
+            - name: NAVIDROME_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: homelab-secrets
+                  key: NAVIDROME_PASS
+            - name: MUSIC_ROOT_HOST
+              value: /music
+            - name: MUSIC_ROOT_CONTAINER
+              value: /music
+            - name: TRASH_DIR
+              value: /config/trash
+            - name: DELETE_DAEMON_LOG_FILE
+              value: /config/delete_daemon.log
+            - name: POLL_INTERVAL
+              value: "300"
+          resources:
+            requests:
+              cpu: "25m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: music
+              mountPath: /music
+      volumes:
+        - name: config
+          hostPath:
+            path: /home/cif/homelab/config/sync_music
+            type: DirectoryOrCreate
+        - name: music
+          hostPath:
+            path: /home/cif/homelab/data/music
+            type: Directory
