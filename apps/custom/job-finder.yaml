@@ -22,6 +22,10 @@ spec:
       containers:
         - name: job-finder
           image: ghcr.io/vsaqv/job-finder:latest
+          # :latest changes on every CI push; Always makes each rollout
+          # (e.g. kubectl rollout restart or ArgoCD sync) pull the newest
+          # image instead of reusing the local cached digest.
+          imagePullPolicy: Always
           resources:
             requests:
               memory: "512Mi"
