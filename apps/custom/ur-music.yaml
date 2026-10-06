@@ -44,6 +44,21 @@ spec:
             runAsUser: 1000
             runAsGroup: 100
             fsGroup: 100
+          initContainers:
+            - name: config-permissions
+              image: busybox:1.36
+              command:
+                - sh
+                - -c
+                - >-
+                  chown 1000:100 /config && chmod 0770 /config
+              securityContext:
+                runAsUser: 0
+                runAsGroup: 0
+                allowPrivilegeEscalation: false
+              volumeMounts:
+                - name: config
+                  mountPath: /config
           containers:
             - name: ur-music
               image: ghcr.io/vsaqv/ur-music:latest
@@ -71,6 +86,8 @@ spec:
                   value: "3"
                 - name: RETRY_DELAY_SECONDS
                   value: "900"
+                - name: LOCAL_SETTLE_SECONDS
+                  value: "30"
                 - name: SLSKD_USERNAME
                   valueFrom:
                     secretKeyRef:
@@ -115,6 +132,8 @@ spec:
                 limits:
                   cpu: "1000m"
                   memory: "1Gi"
+              securityContext:
+                allowPrivilegeEscalation: false
               volumeMounts:
                 - name: config
                   mountPath: /config
@@ -158,6 +177,21 @@ spec:
             runAsUser: 1000
             runAsGroup: 100
             fsGroup: 100
+          initContainers:
+            - name: config-permissions
+              image: busybox:1.36
+              command:
+                - sh
+                - -c
+                - >-
+                  chown 1000:100 /config && chmod 0770 /config
+              securityContext:
+                runAsUser: 0
+                runAsGroup: 0
+                allowPrivilegeEscalation: false
+              volumeMounts:
+                - name: config
+                  mountPath: /config
           containers:
             - name: discovery
               image: ghcr.io/vsaqv/ur-music:latest
@@ -229,6 +263,21 @@ spec:
         runAsUser: 1000
         runAsGroup: 100
         fsGroup: 100
+      initContainers:
+        - name: config-permissions
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - >-
+              chown 1000:100 /config && chmod 0770 /config
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: config
+              mountPath: /config
       containers:
         - name: delete-daemon
           image: ghcr.io/vsaqv/ur-music:latest
